@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-FFMPEG_VERSION = 3.4.4
+FFMPEG_VERSION = 4.2
 FFMPEG_SOURCE = ffmpeg-$(FFMPEG_VERSION).tar.xz
 FFMPEG_SITE = http://ffmpeg.org/releases
 FFMPEG_INSTALL_STAGING = YES
@@ -82,12 +82,6 @@ FFMPEG_CONF_OPTS += --enable-ffplay
 FFMPEG_CONF_ENV += SDL_CONFIG=$(STAGING_DIR)/usr/bin/sdl2-config
 else
 FFMPEG_CONF_OPTS += --disable-ffplay
-endif
-
-ifeq ($(BR2_PACKAGE_FFMPEG_FFSERVER),y)
-FFMPEG_CONF_OPTS += --enable-ffserver
-else
-FFMPEG_CONF_OPTS += --disable-ffserver
 endif
 
 ifeq ($(BR2_PACKAGE_FFMPEG_AVRESAMPLE),y)
@@ -511,10 +505,10 @@ endif
 # warning from ffmpeg's configure script.
 ifeq ($(BR2_mips)$(BR2_mipsel)$(BR2_mips64)$(BR2_mips64el),y)
 FFMPEG_CONF_OPTS += --cpu=generic
-else ifneq ($(call qstrip,$(BR2_GCC_TARGET_CPU)),)
-FFMPEG_CONF_OPTS += --cpu=$(BR2_GCC_TARGET_CPU)
-else ifneq ($(call qstrip,$(BR2_GCC_TARGET_ARCH)),)
-FFMPEG_CONF_OPTS += --cpu=$(BR2_GCC_TARGET_ARCH)
+else ifneq ($(GCC_TARGET_CPU),)
+FFMPEG_CONF_OPTS += --cpu="$(GCC_TARGET_CPU)"
+else ifneq ($(GCC_TARGET_ARCH),)
+FFMPEG_CONF_OPTS += --cpu="$(GCC_TARGET_ARCH)"
 endif
 
 FFMPEG_CONF_OPTS += $(call qstrip,$(BR2_PACKAGE_FFMPEG_EXTRACONF))

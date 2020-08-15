@@ -5,14 +5,14 @@ TMP_BOOT_LOG=/tmp/_boot.log
 PID_FILE=/tmp/rc.pid
 
 set -a
-test -f /etc/environment && source /etc/environment
-test -f /data/etc/environment && source /data/etc/environment
-test -f /boot/etc/environment && source /boot/etc/environment
+test -s /etc/environment && source /etc/environment
+test -s /data/etc/environment && source /data/etc/environment
+test -s /boot/etc/environment && source /boot/etc/environment
 set +a
 
 source /etc/init.d/base
 
-echo "---- booting ${OS_NAME} ${OS_VERSION} ----" >> ${TMP_BOOT_LOG}
+echo "---- booting ${OS_NAME} ${OS_VERSION} ----" | tee -a ${TMP_BOOT_LOG}
 
 # start all init scripts in /etc/init.d,
 # executing them in numerical order.
@@ -28,4 +28,3 @@ while kill -0 ${pid} 2>/dev/null; do
 done
 
 test -d $(dirname ${BOOT_LOG}) && cat ${TMP_BOOT_LOG} >> ${BOOT_LOG}
-

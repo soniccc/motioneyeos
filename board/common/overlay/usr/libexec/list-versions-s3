@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # expected final S3 URL: 
-#    https://s3.amazonaws.com/${bucket}/${path}/${version}/${os_short_name}-${board}-${version}.img.xz
+#    https://{bucket}.s3.amazonaws.com/${path}/${version}/${os_short_name}-${board}-${version}.img.xz
 
 if [ -z "$1" ]; then
     echo "Usage: $0 <bucket/path>" 1>&2
@@ -13,36 +13,43 @@ bucket=$(echo ${bucket_path} | cut -d '/' -f 1)
 path=${bucket_path:${#bucket} + 1}
 
 opts="-s -S -f"
+max_keys="1000"
 test -n "${FW_USERNAME}" && opts+=" --user ${FW_USERNAME}:${FW_PASSWORD}"
-url=https://s3.amazonaws.com/${bucket}
+url="https://${bucket}.s3.amazonaws.com"
 
-xml_result=$(curl ${opts} ${url})
+xml_result=$(curl ${opts} "${url}?list-type=2&max_keys=${max_keys}&prefix=${path}&fetch-owner=true")
 keys=$(echo "${xml_result}" | grep -oE '<Key>[^<]+<\/Key>' | sed 's/<Key>\(.*\)<\/Key>/\1/')
 dates=$(echo "${xml_result}" | grep -oE '<LastModified>[^<]+<\/LastModified>' | sed 's/<LastModified>\(.*\)<\/LastModified>/\1/')
+storage_classes=$(echo "${xml_result}" | grep -oE '<StorageClass>[^<]+<\/StorageClass>' | sed 's/<StorageClass>\(.*\)<\/StorageClass>/\1/')
 dates=(${dates})
-files=$(echo "${keys}" | grep "^${path}/" | sed "s/^${path}\///" | sed '/^$/d')
+files=(${keys})
+storage_classes=(${storage_classes})
 
 i=0
-for file in ${files}; do
-    version=$(echo ${file} | cut -d '/' -f 1)
-    fname=$(echo ${file} | cut -d '/' -f 2)
-    i=$((i + 1))
-    if [[ -z "${fname}" ]]; then
-        continue  # version folder
-    fi
-
+for file in ${files[*]}; do
+    [[ "${file}" =~ ^${path}/(.+)/(.+)$ ]] || continue
+    version="${BASH_REMATCH[1]}"
+    fname="${BASH_REMATCH[2]}"
     prerelease=false
-    if [[ "${version}" =~ ^.*[ab][0-9]+$ ]]; then  # e.g. 0.4.1b2
-        prerelease=true
-    fi
-    if [[ "${version}" =~ ^dev.*$ ]]; then  # e.g. dev20180314
-        prerelease=true
-    fi
-    
-    final_url=${url}/${path}/${version}/${fname}
-    board=$(echo ${fname} | cut -d '-' -f 2)
-    date=$(echo ${dates[${i}]} | cut -d 'T' -f 1)
-    
-    echo "${version}|${prerelease}|${board}|${final_url}|${date}"
-done | sort -t '|' -k 5,3 -r
 
+    if [[ "${version}" =~ ^.*[abc]\.?[0-9]+$ ]] || # e.g. 0.4.1b2, 0.4.1b.2, 0.4.1-b.2
+       [[ "${version}" =~ ^.*(alpha|beta|rc)\.?[0-9]+$ ]] || # e.g. 0.4.1beta2, 0.4.1beta.2, 0.4.1-beta.2
+       [[ "${version}" =~ ^(dev|nightly).*$ ]]; then # e.g. dev20180314, nightly20180314
+        prerelease=true
+    fi
+    
+    # Items with REDUCED_REDUNDANCY storage class are considered, by convention, unpublished
+    published="true"
+    storage_class=${storage_classes[${i}]}
+    if [[ "${storage_class}" == "REDUCED_REDUNDANCY" ]]; then
+        published="false"
+    fi
+
+    [[ "${fname}" =~ ^([^-]+)-([^-]+)-(.+)$ ]] || continue
+    board="${BASH_REMATCH[2]}"
+    final_url="${url}/${path}/${version}/${fname}"
+    date="${dates[${i}]:0:10}"
+
+    echo "${version}|${prerelease}|${board}|${final_url}|${date}|${published}"
+    i=$((i + 1))
+done | semver-sort -r -t '|' -k 1

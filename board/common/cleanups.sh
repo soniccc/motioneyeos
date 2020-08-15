@@ -10,7 +10,6 @@ find ${TARGET} -name '.empty' | xargs -r rm
 # /etc stuff
 rm -rf ${TARGET}/etc/network/
 rm -rf ${TARGET}/etc/dhcp/
-rm -rf ${TARGET}/etc/ssh/
 rm -rf ${TARGET}/etc/rc_keymaps/
 rm -rf ${TARGET}/etc/default/
 rm -rf ${TARGET}/etc/ctdb/
@@ -19,12 +18,14 @@ rm -rf ${TARGET}/etc/ssl/man
 rm -rf ${TARGET}/etc/ssl/misc
 rm -rf ${TARGET}/etc/ssl/private
 rm -rf ${TARGET}/etc/logrotate.d
+rm -rf ${TARGET}/etc/fstab
 
 rm -f ${TARGET}/etc/rc_maps.cfg
 rm -f ${TARGET}/etc/udev/hwdb.d/20-pci-vendor-model.hwdb
 rm -f ${TARGET}/etc/hostname
 rm -f ${TARGET}/etc/os-release
 rm -f ${TARGET}/etc/hostapd.conf
+rm -f ${TARGET}/etc/timezone
 
 # /usr/share stuff
 rm -rf ${TARGET}/usr/share/bash-completion/
@@ -201,10 +202,12 @@ rm -rf ${TARGET}/usr/lib/python2.7/config/
 rm -rf ${TARGET}/usr/lib/python2.7/unittest/
 
 # buildroot default startup scripts
-rm -f ${TARGET}/etc/init.d/S01logging
+rm -f ${TARGET}/etc/init.d/S01syslogd
 rm -f ${TARGET}/etc/init.d/S10udev
 rm -f ${TARGET}/etc/init.d/S15watchdog
 rm -f ${TARGET}/etc/init.d/S20urandom
+rm -f ${TARGET}/etc/init.d/S21rngd
+rm -f ${TARGET}/etc/init.d/S48sntp
 rm -f ${TARGET}/etc/init.d/S49ntp
 rm -f ${TARGET}/etc/init.d/S50sshd
 rm -f ${TARGET}/etc/init.d/S50proftpd
@@ -220,4 +223,3 @@ rm -f ${TARGET}/etc/init.d/S99motion
 rm -rf ${TARGET}/data/*
 rm -rf ${TARGET}/run
 rm -rf ${TARGET}/etc/profile.d
-

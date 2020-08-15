@@ -10,6 +10,7 @@ PROG="/usr/libexec/bluetooth/bluetoothd"
 PROG_HC="/usr/bin/hciconfig"
 DATA_DIR="/var/lib/bluetooth"
 RUN_DATA_DIR="/data/bluetooth"
+NO_ON_BOARD_BT="/tmp/.no_on_board_bt"  # used by RPi to explicitly indicate that no on-board BT was detected
 
 
 test -x ${PROG} || exit 0
@@ -17,7 +18,7 @@ test -x ${PROG} || exit 0
 test -n "${OS_VERSION}" || source /etc/init.d/base
 
 prepare_conf ${CONF} ${SYS_CONF} ${BOOT_CONF}
-test -f ${CONF} || exit 0
+test -s ${CONF} || exit 0
 
 
 configure() {
@@ -26,7 +27,7 @@ configure() {
     cp ${CONF} ${RUN_CONF}
 
     # if no specific name configured, use hostname
-    if ! grep -E 'Name\s*=' ${RUN_CONF} &>/dev/null; then
+    if ! grep -E 'Name\s*=' ${RUN_CONF} &>/dev/null; then   
         sed -ri "s/(\[General\])/\1\nName = $(hostname)/" ${RUN_CONF}
     fi
     
@@ -40,14 +41,16 @@ start() {
     # wait up to 10 seconds for device
     count=0
     while ! ${PROG_HC} ${ADAPTER} &>/dev/null; do
-        sleep 1
-        count=$((${count} + 1))
-        if [[ ${count} -ge 10 ]]; then
+        # on RPi boards, the absence of an on-board BT can be detected earlier, preventing 10s timeout
+        
+        count=$((count + 1))
+        if [[ ${count} -ge 10 ]] || [[ -f "${NO_ON_BOARD_BT}" ]]; then
             msg_fail "no device"
-            logger -t bluetooth -s "bluetooth device not available, calling panic action"
-            panic_action bluetooth
-            return 1
+            logger -t bluetooth "bluetooth device not available"
+            return 0
         fi
+
+        sleep 1
     done
     
     if configure; then
